@@ -9,6 +9,8 @@ const { createImageGenerator } = require('../src/stage2/image-generator');
 const { createTrendScanner } = require('../src/stage1/trend-scanner');
 const { createContentAnalyzer } = require('../src/stage1/content-analyzer');
 const { createPipelineLogger } = require('../src/common/pipeline-logger');
+const { createAccountManager } = require('../src/common/account-manager');
+const path = require('path');
 
 async function autoSelectTopic(gemini) {
   console.log('[Stage 1] Google Trends KR 수집 중...');
@@ -29,7 +31,15 @@ async function autoSelectTopic(gemini) {
   return best.contentAngle || best.title;
 }
 
-async function run(topicArg, isAuto) {
+async function run(topicArg, isAuto, accountName) {
+  // 계정 지정 시 해당 계정 env로 override
+  if (accountName) {
+    const mgr = createAccountManager(path.resolve(__dirname, '../accounts.json'));
+    const accountEnv = mgr.getEnv(accountName);
+    Object.assign(process.env, accountEnv);
+    console.log(`[계정] "${accountName}" 계정으로 실행 중`);
+  }
+
   const gemini = createGeminiClient(process.env.GEMINI_API_KEY);
   const slack = createSlackNotifier(process.env.SLACK_WEBHOOK_URL);
   const osmu = createOsmuEngine(gemini);
@@ -81,9 +91,11 @@ async function run(topicArg, isAuto) {
 
 const args = process.argv.slice(2);
 const isAuto = args.includes('--auto');
-const topicArg = args.find((a) => !a.startsWith('--'));
+const accountIdx = args.indexOf('--account');
+const accountName = accountIdx !== -1 ? args[accountIdx + 1] : null;
+const topicArg = args.find((a) => !a.startsWith('--') && a !== accountName);
 
-run(topicArg, isAuto).catch((err) => {
+run(topicArg, isAuto, accountName).catch((err) => {
   console.error('\n❌ Pipeline error:', err.message);
   process.exit(1);
 });

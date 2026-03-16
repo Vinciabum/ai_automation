@@ -1,0 +1,18 @@
+{
+  "accounts": {
+    "brandA": {
+      "GEMINI_API_KEY": "key-brandA",
+      "SLACK_WEBHOOK_URL": "https://hooks.slack.com/brandA",
+      "META_ACCESS_TOKEN": "",
+      "INSTAGRAM_USER_ID": "ig-brandA",
+      "THREADS_USER_ID": "th-brandA"
+    },
+    "brandB": {
+      "GEMINI_API_KEY": "key-brandB",
+      "SLACK_WEBHOOK_URL": "https://hooks.slack.com/brandB",
+      "META_ACCESS_TOKEN": "",
+      "INSTAGRAM_USER_ID": "ig-brandB",
+      "THREADS_USER_ID": "th-brandB"
+    }
+  }
+}
