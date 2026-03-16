@@ -3,3 +3,5 @@ node_modules/
 output/
 *.png
 *.jpg
+data/
+accounts.json

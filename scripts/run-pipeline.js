@@ -8,6 +8,7 @@ const { createOsmuEngine } = require('../src/stage2/osmu-engine');
 const { createImageGenerator } = require('../src/stage2/image-generator');
 const { createTrendScanner } = require('../src/stage1/trend-scanner');
 const { createContentAnalyzer } = require('../src/stage1/content-analyzer');
+const { createPipelineLogger } = require('../src/common/pipeline-logger');
 
 async function autoSelectTopic(gemini) {
   console.log('[Stage 1] Google Trends KR 수집 중...');
@@ -68,7 +69,12 @@ async function run(topicArg, isAuto) {
   // Stage 3: Slack 검수 요청
   console.log('\n[Stage 3] Slack 검수 요청 발송 중...');
   await slack.sendApprovalRequest({ topic, ...content });
-  console.log('  ✅ Slack 전송 완료. 검수 후 승인하세요.\n');
+  console.log('  ✅ Slack 전송 완료. 검수 후 승인하세요.');
+
+  // 실행 이력 기록
+  const logger = createPipelineLogger();
+  logger.save({ topic, ...content, imagePath });
+  console.log('  ✅ 실행 이력 저장됨 (data/runs.json)\n');
 
   return { topic, content, imagePath };
 }
