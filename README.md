@@ -17,6 +17,14 @@ cp .env.example .env
 # 3. 실행
 node scripts/run-pipeline.js --auto          # 자동 (트렌드 수집 → 콘텐츠 생성 → Slack)
 node scripts/run-pipeline.js "AI와 마케팅"  # 수동 주제 지정
+
+# 4. 대시보드 (실행 이력 시각화)
+npm run dashboard                            # output/dashboard.html 생성 후 브라우저로 열기
+
+# 5. 다중 계정 실행
+cp accounts.json.example accounts.json      # 계정 설정 파일 생성 후 키 입력
+node scripts/run-pipeline.js --auto --account brandA
+node scripts/run-pipeline.js "AI 마케팅" --account brandB
 ```
 
 ---
@@ -97,6 +105,20 @@ ai_automation/
 
 ---
 
+## 다중 계정 설정
+
+`accounts.json.example`을 복사해 `accounts.json` 생성 후 계정별 API 키를 입력합니다.
+(`accounts.json`은 .gitignore 처리 — 키가 GitHub에 업로드되지 않음)
+
+```json
+{
+  "accounts": {
+    "brandA": { "GEMINI_API_KEY": "...", "SLACK_WEBHOOK_URL": "...", ... },
+    "brandB": { "GEMINI_API_KEY": "...", "SLACK_WEBHOOK_URL": "...", ... }
+  }
+}
+```
+
 ## 테스트
 
 ```bash
@@ -104,7 +126,7 @@ npm test                          # 전체 테스트
 npm test tests/common/            # 특정 모듈만
 ```
 
-현재 **38/38 테스트 통과**.
+현재 **51/51 테스트 통과**.
 
 ---
 
@@ -113,4 +135,4 @@ npm test tests/common/            # 특정 모듈만
 - [x] Phase 1: Gemini 콘텐츠 생성 + Slack 검수 MVP
 - [ ] Phase 2: Instagram/Threads Meta API 자동 발행
 - [ ] Phase 3: Naver Blog Playwright 자동화
-- [ ] Phase 4: 트렌드 분석 대시보드 + 다중 계정 관리
+- [x] Phase 4: 트렌드 분석 대시보드 + 다중 계정 관리
