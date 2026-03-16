@@ -9,7 +9,8 @@
   "scripts": {
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
-    "pipeline": "node scripts/run-pipeline.js"
+    "pipeline": "node scripts/run-pipeline.js",
+    "dashboard": "node scripts/dashboard.js"
   },
   "keywords": [],
   "author": "",
