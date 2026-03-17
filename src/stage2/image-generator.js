@@ -2,19 +2,23 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFile } = require('child_process');
+
+const PYTHON_SCRIPT = path.resolve(__dirname, '../../scripts/generate-image.py');
 
 function createImageGenerator(geminiClient, outputDir = './output/images') {
   async function generate(imagePrompt) {
-    const { data, mimeType } = await geminiClient.generateImage(imagePrompt);
-
     fs.mkdirSync(outputDir, { recursive: true });
+    const filepath = path.join(outputDir, `img_${Date.now()}.png`);
 
-    const ext = mimeType.split('/')[1] || 'png';
-    const filename = `img_${Date.now()}.${ext}`;
-    const filepath = path.join(outputDir, filename);
-
-    fs.writeFileSync(filepath, Buffer.from(data, 'base64'));
-    return filepath;
+    return new Promise((resolve, reject) => {
+      execFile('python', [PYTHON_SCRIPT, imagePrompt, filepath], {
+        env: { ...process.env }
+      }, (err, stdout, stderr) => {
+        if (err) return reject(new Error(stderr || err.message));
+        resolve(stdout.trim());
+      });
+    });
   }
 
   return { generate };
