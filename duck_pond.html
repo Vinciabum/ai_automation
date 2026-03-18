@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지브리 코발트 블루 연못</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        :root {
+            --ghibli-bg: #fdf6e3;
+            --cobalt-blue: #0047ab;
+            --accent: #5d4037;
+        }
+        body { 
+            margin: 0; 
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--ghibli-bg);
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            overflow: hidden;
+            background-image: radial-gradient(#e6dfcf 1.2px, transparent 1.2px);
+            background-size: 24px 24px;
+        }
+        #ghibli-frame {
+            position: relative;
+            width: 950px;
+            height: 700px;
+            background: #fff;
+            border-radius: 60px;
+            box-shadow: 0 45px 110px rgba(0, 40, 80, 0.18);
+            overflow: hidden;
+            border: 18px solid #fff;
+        }
+        #ui-panel {
+            position: absolute; top: 35px; left: 35px; z-index: 100;
+            display: flex; gap: 12px; 
+        }
+        button {
+            padding: 10px 22px; border: none; border-radius: 25px;
+            cursor: pointer; font-weight: 600; transition: all 0.4s ease;
+            background: rgba(255, 255, 255, 0.88); color: #1a2a3a;
+            font-size: 13px; backdrop-filter: blur(8px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+        button:hover { transform: translateY(-3px); background: #fff; }
+        button.active { background: #0047ab; color: #fff; }
+        canvas { display: block; cursor: crosshair; }
+        .vignette {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            box-shadow: inset 0 0 160px rgba(0,20,50,0.15);
+        }
+    </style>
+</head>
+<body>
+
+<div id="ghibli-frame">
+    <div id="ui-panel">
+        <button id="btn-duck" class="active">🦆 오리 생성</button>
+        <button id="btn-food">🥖 먹이 주기</button>
+    </div>
+    <div class="vignette"></div>
+</div>
+
+<script>
+window.onload = () => {
+    if (typeof Matter === 'undefined') return;
+
+    const { Engine, World, Bodies, Body, Vector } = Matter;
+    const frame = document.getElementById('ghibli-frame');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    frame.appendChild(canvas);
+
+    let mode = 'duck';
+    const ducks = [], foods = [], ripples = [], butterflies = [], reeds = [], sparkles = [];
+
+    const engine = Engine.create();
+    engine.world.gravity.y = 0;
+
+    function resize() {
+        canvas.width = frame.clientWidth;
+        canvas.height = frame.clientHeight;
+        initScene();
+    }
+    window.addEventListener('resize', resize);
+
+    function initScene() {
+        reeds.length = 0; butterflies.length = 0; sparkles.length = 0;
+        
+        // 갈대: 훨씬 느리고 하늘하늘하게 (speed 낮춤)
+        for(let i=0; i<65; i++) {
+            const side = Math.random() > 0.5 ? 0 : canvas.width;
+            const x = side === 0 ? Math.random()*85 : canvas.width - Math.random()*85;
+            reeds.push({
+                x, y: Math.random() * canvas.height,
+                h: 90 + Math.random()*130,
+                offset: Math.random() * 100,
+                speed: 0.002 + Math.random()*0.002, // 초저속 흔들림
+                color: Math.random() > 0.5 ? '#8da36d' : '#b5c490'
+            });
+        }
+
+        // 나비: 노란색과 파란색 버전
+        for(let i=0; i<8; i++) {
+            butterflies.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random()-0.5)*0.8, vy: (Math.random()-0.5)*0.8,
+                phase: Math.random() * 10,
+                color: Math.random() > 0.5 ? '#ffeb3b' : '#4fc3f7' // 노랑 vs 파랑
+            });
+        }
+
+        // 윤슬
+        for(let i=0; i<30; i++) {
+            sparkles.push({
+                x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+                size: 0.8 + Math.random()*2, opacity: Math.random(),
+                speed: 0.008 + Math.random()*0.015
+            });
+        }
+    }
+
+    const DUCK_TYPES = [
+        { body: '#ffffff', head: '#ffffff', beak: '#f39c12' },
+        { body: '#fef5d1', head: '#fef5d1', beak: '#e67e22' },
+        { body: '#5d4037', head: '#1b5e20', beak: '#f1c40f' }
+    ];
+
+    class Duck {
+        constructor(x, y) {
+            this.type = DUCK_TYPES[Math.floor(Math.random() * DUCK_TYPES.length)];
+            this.body = Bodies.circle(x, y, 16, { frictionAir: 0.16, restitution: 0.5 });
+            this.angle = Math.random() * Math.PI * 2;
+            World.add(engine.world, this.body);
+            ducks.push(this);
+        }
+
+        update() {
+            let f = { x: 0, y: 0 };
+            if (foods.length > 0) {
+                let close = foods[0];
+                let dMin = Vector.magnitude(Vector.sub(this.body.position, close.position));
+                foods.forEach(o => {
+                    const d = Vector.magnitude(Vector.sub(this.body.position, o.position));
+                    if(d < dMin) { dMin = d; close = o; }
+                });
+                f = Vector.mult(Vector.normalise(Vector.sub(close.position, this.body.position)), 0.00035);
+                if (dMin < 30) { World.remove(engine.world, close); foods.splice(foods.indexOf(close), 1); }
+            } else {
+                this.angle += (Math.random() - 0.5) * 0.035;
+                f = { x: Math.cos(this.angle) * 0.00012, y: Math.sin(this.angle) * 0.00012 };
+            }
+            Body.applyForce(this.body, this.body.position, f);
+            if (Vector.magnitude(this.body.velocity) > 0.04) {
+                this.angle = Math.atan2(this.body.velocity.y, this.body.velocity.x);
+                if(Math.random() > 0.95) ripples.push({ x: this.body.position.x, y: this.body.position.y, r: 4, a: 0.25 });
+            }
+        }
+
+        draw() {
+            const { x, y } = this.body.position;
+            ctx.save(); ctx.translate(x, y); ctx.rotate(this.angle);
+            ctx.fillStyle = 'rgba(0,10,30,0.06)';
+            ctx.beginPath(); ctx.ellipse(0, 5, 20, 14, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = this.type.body;
+            ctx.beginPath(); ctx.ellipse(0, 0, 18, 12, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = this.type.head;
+            ctx.beginPath(); ctx.arc(12, -4, 10, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = this.type.beak;
+            ctx.beginPath(); ctx.moveTo(20, -6); ctx.lineTo(28, -4); ctx.lineTo(20, 0); ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    function render() {
+        // 1. 코발트 블루 지브리 연못
+        const grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width*0.8);
+        grad.addColorStop(0, '#0047ab'); // 코발트 블루 중심
+        grad.addColorStop(0.6, '#005a8d'); 
+        grad.addColorStop(1, '#4db6ac'); // 가장자리는 맑은 청록색
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 2. 윤슬
+        ctx.fillStyle = '#fff';
+        sparkles.forEach(s => {
+            s.opacity += s.speed;
+            if(s.opacity > 1 || s.opacity < 0) s.speed *= -1;
+            ctx.globalAlpha = Math.max(0, s.opacity * 0.35);
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+        });
+        ctx.globalAlpha = 1.0;
+
+        // 3. 초저속 하늘하늘 갈대
+        const time = Date.now();
+        reeds.forEach(r => {
+            const swing = Math.sin(time * r.speed + r.offset) * 22;
+            ctx.strokeStyle = r.color; ctx.lineWidth = 3.5;
+            ctx.beginPath(); ctx.moveTo(r.x, r.y);
+            ctx.quadraticCurveTo(r.x + swing, r.y - r.h*0.4, r.x + swing*1.4, r.y - r.h);
+            ctx.stroke();
+            ctx.fillStyle = r.color;
+            ctx.beginPath(); ctx.ellipse(r.x + swing*1.4, r.y - r.h, 4.5, 14, swing*0.015, 0, Math.PI*2); ctx.fill();
+        });
+
+        // 4. 물결/오리/먹이
+        for(let i=ripples.length-1; i>=0; i--) {
+            const r = ripples[i]; r.r += 0.35; r.a -= 0.005;
+            if(r.a <= 0) ripples.splice(i, 1);
+            else { ctx.strokeStyle = `rgba(255,255,255,${r.a})`; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI*2); ctx.stroke(); }
+        }
+        foods.forEach(f => { ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.beginPath(); ctx.arc(f.position.x, f.position.y, 4, 0, Math.PI*2); ctx.fill(); });
+        ducks.forEach(d => { d.update(); d.draw(); });
+
+        // 5. 노랑 & 파랑 나비
+        butterflies.forEach(b => {
+            b.x += b.vx; b.y += b.vy; b.phase += 0.18;
+            b.vx += (Math.random()-0.5)*0.08; b.vy += (Math.random()-0.5)*0.08;
+            const w = Math.abs(Math.sin(b.phase)) * 5.5;
+            ctx.fillStyle = b.color; ctx.globalAlpha = 0.85;
+            ctx.beginPath(); ctx.ellipse(b.x-w, b.y, 2.5, 5, 0, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(b.x+w, b.y, 2.5, 5, 0, 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1.0;
+            if(b.x<0) b.x=canvas.width; if(b.x>canvas.width) b.x=0;
+            if(b.y<0) b.y=canvas.height; if(b.y>canvas.height) b.y=0;
+        });
+
+        Engine.update(engine);
+        requestAnimationFrame(render);
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        const r = canvas.getBoundingClientRect();
+        const x = e.clientX - r.left, y = e.clientY - r.top;
+        if(mode==='duck') new Duck(x, y);
+        else { const o = Bodies.circle(x, y, 4, { isSensor: true }); World.add(engine.world, o); foods.push(o); }
+    });
+
+    document.getElementById('btn-duck').onclick = () => { mode='duck'; document.getElementById('btn-duck').className='active'; document.getElementById('btn-food').className=''; };
+    document.getElementById('btn-food').onclick = () => { mode='food'; document.getElementById('btn-food').className='active'; document.getElementById('btn-duck').className=''; };
+
+    resize();
+    for(let i=0; i<3; i++) new Duck(200+Math.random()*500, 200+Math.random()*300);
+    render();
+};
+</script>
+</body>
+</html>
